@@ -183,3 +183,23 @@ app.delete('/api/speeches/:id', authenticateToken, async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta http://localhost:${PORT}`);
 });
+
+// --- INICIA O SERVIDOR E RODA AS MIGRAÇÕES (SUBSTITUA SEU app.listen POR ISSO) ---
+
+const startServer = async () => {
+  try {
+    console.log('Rodando as migrations...');
+    await knex.migrate.latest(); // Knex vai usar a configuração de 'production' automaticamente na Render
+    console.log('Migrations concluídas com sucesso.');
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    });
+
+  } catch (error) {
+    console.error("❌ Erro ao rodar migrations ou iniciar o servidor:", error);
+    process.exit(1); // Encerra o processo com erro se as migrations falharem
+  }
+};
+
+startServer();
