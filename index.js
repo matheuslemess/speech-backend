@@ -39,15 +39,24 @@ const authenticateToken = (req, res, next) => {
 
 // --- ROTAS PÚBLICAS (AUTENTICAÇÃO) ---
 
-app.post('/api/auth/register', async (req, res) => { /* ...código de antes, sem alteração... */ 
+app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email e senha são obrigatórios.' });
+    // 1. Extraia o 'name' junto com email e password
+    const { name, email, password } = req.body;
+
+    // 2. Atualize a validação
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Nome, email e senha são obrigatórios.' });
     }
+
     const password_hash = await bcrypt.hash(password, 10);
-    const [userId] = await knex('users').insert({ email, password_hash });
-    res.status(201).json({ id: userId, email });
+
+    // 3. Insira o 'name' no banco de dados
+    const [userId] = await knex('users').insert({ name, email, password_hash });
+
+    // 4. (Opcional) Retorne o nome na resposta de sucesso
+    res.status(201).json({ id: userId, name, email });
+
   } catch (error) {
     if (error.code === 'SQLITE_CONSTRAINT') {
         return res.status(409).json({ message: 'Este email já está em uso.' });
@@ -106,9 +115,10 @@ app.get('/api/users/me', authenticateToken, async (req, res) => {
             return res.status(404).json({ message: 'Usuário não encontrado.' });
         }
 
-        // Nunca retorne o password_hash! Apenas os dados seguros.
+        // Adicione o 'name' à resposta
         res.status(200).json({
             id: user.id,
+            name: user.name, // << NOVO
             email: user.email
         });
 
