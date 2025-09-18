@@ -97,6 +97,75 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// ROTA PARA BUSCAR DADOS DO USUÁRIO LOGADO
+app.get('/api/users/me', authenticateToken, async (req, res) => {
+    try {
+        const user = await knex('users').where({ id: req.user.userId }).first();
+
+        if (!user) {
+            return res.status(404).json({ message: 'Usuário não encontrado.' });
+        }
+
+        // Nunca retorne o password_hash! Apenas os dados seguros.
+        res.status(200).json({
+            id: user.id,
+            email: user.email
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: "Erro ao buscar dados do usuário.", error: error.message });
+    }
+});
+
+// ROTA PARA ATUALIZAR DADOS DO USUÁRIO LOGADO
+app.put('/api/users/me', authenticateToken, async (req, res) => {
+    try {
+        const { email, newPassword, currentPassword } = req.body;
+
+        // 1. Validação: A senha atual é obrigatória para qualquer alteração.
+        if (!currentPassword) {
+            return res.status(400).json({ message: 'A senha atual é obrigatória para salvar as alterações.' });
+        }
+
+        const user = await knex('users').where({ id: req.user.userId }).first();
+        if (!user) {
+            return res.status(404).json({ message: 'Usuário não encontrado.' });
+        }
+
+        // 2. Verificar se a senha atual está correta
+        const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!isPasswordCorrect) {
+            return res.status(403).json({ message: 'A senha atual está incorreta.' });
+        }
+
+        const updates = {};
+
+        // 3. Se um novo email foi fornecido, prepara a atualização
+        if (email && email !== user.email) {
+            const existingUser = await knex('users').where({ email }).first();
+            if (existingUser) {
+                return res.status(409).json({ message: 'Este email já está em uso por outra conta.' });
+            }
+            updates.email = email;
+        }
+
+        // 4. Se uma nova senha foi fornecida, prepara a atualização
+        if (newPassword) {
+            updates.password_hash = await bcrypt.hash(newPassword, 10);
+        }
+        
+        // 5. Se houver atualizações a fazer, executa no banco
+        if (Object.keys(updates).length > 0) {
+            await knex('users').where({ id: user.id }).update(updates);
+        }
+
+        res.status(200).json({ message: 'Perfil atualizado com sucesso!' });
+
+    } catch (error) {
+        console.error("Erro ao atualizar perfil:", error);
+        res.status(500).json({ message: 'Erro ao atualizar o perfil.', error: error.message });
+    }
+});
 
 // --- ROTAS PROTEGIDAS (DISCURSOS) ---
 // Note o `authenticateToken` antes da lógica da rota
