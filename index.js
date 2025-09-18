@@ -56,23 +56,43 @@ app.post('/api/auth/register', async (req, res) => { /* ...código de antes, sem
   }
 });
 
-app.post('/api/auth/login', async (req, res) => { /* ...código de antes, sem alteração... */
+app.post('/api/auth/login', async (req, res) => {
+    console.log('--- Nova Tentativa de Login ---'); // Log inicial
     try {
         const { email, password } = req.body;
+        console.log('Email recebido para login:', email); // Log do email
+
         if (!email || !password) {
+            console.log('Erro: Email ou senha não fornecidos.');
             return res.status(400).json({ message: 'Email e senha são obrigatórios.' });
         }
+
         const user = await knex('users').where({ email }).first();
+
+        // ESTE É O LOG MAIS IMPORTANTE:
+        console.log('Usuário encontrado no banco de dados:', user); 
+
         if (!user) {
+            console.log('Login falhou: Nenhum usuário encontrado com esse email.');
             return res.status(401).json({ message: 'Credenciais inválidas.' });
         }
+
+        console.log('Usuário encontrado. Comparando a senha...');
         const isPasswordCorrect = await bcrypt.compare(password, user.password_hash);
+        
+        console.log('Resultado da comparação de senha:', isPasswordCorrect); // Log do resultado do bcrypt
+
         if (!isPasswordCorrect) {
+            console.log('Login falhou: A senha está incorreta.');
             return res.status(401).json({ message: 'Credenciais inválidas.' });
         }
+        
+        console.log('Login bem-sucedido! Gerando token...');
         const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
         res.status(200).json({ token });
+
     } catch (error) {
+        console.error('ERRO GERAL NA ROTA DE LOGIN:', error); // Log de erro completo
         res.status(500).json({ message: 'Erro ao fazer login.', error: error.message });
     }
 });
