@@ -14,7 +14,10 @@ module.exports = {
   // Adicione esta nova configuração para produção
   production: {
     client: 'pg', // Usaremos o cliente 'pg'
-    connection: process.env.DATABASE_URL, // Puxa a URL do banco das variáveis de ambiente
+    connection: { 
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    },
     migrations: {
       directory: './migrations'
     }
